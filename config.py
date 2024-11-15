@@ -1,29 +1,22 @@
 """
-Configuration file for cryptocurrency price tracker
+Configuration file for the cryptocurrency price tracker
 """
 
 # API Configuration
-COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
-UPDATE_INTERVAL = 60  # seconds
+COINGECKO_API_URL = "https://api.coingecko.com/api/v3/simple/price"
+UPDATE_INTERVAL = 60  # seconds between price checks
 
-# Cryptocurrencies to track (symbol: name)
+# Cryptocurrencies to track
 CRYPTOCURRENCIES = {
-    "bitcoin": "BTC",
-    "ethereum": "ETH",
-    "cardano": "ADA",
-    "solana": "SOL",
-    "ripple": "XRP"
+    'bitcoin': {'symbol': 'BTC', 'alert_threshold': 50000},
+    'ethereum': {'symbol': 'ETH', 'alert_threshold': 3000},
+    'cardano': {'symbol': 'ADA', 'alert_threshold': 1.5},
+    'solana': {'symbol': 'SOL', 'alert_threshold': 150},
 }
 
 # Alert Configuration
-ALERT_THRESHOLDS = {
-    "BTC": {"high": 50000, "low": 40000},
-    "ETH": {"high": 3000, "low": 2000},
-    "ADA": {"high": 1.5, "low": 0.8},
-    "SOL": {"high": 200, "low": 100},
-    "XRP": {"high": 1.0, "low": 0.5}
-}
+ALERT_ENABLED = True
+PRICE_CHANGE_THRESHOLD = 5.0  # percentage change to trigger alert
 
-# Notification Settings
-ENABLE_ALERTS = True
-ALERT_SOUND = True
+# Display Configuration
+CURRENCY = 'usd'
