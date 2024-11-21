@@ -1,69 +1,46 @@
 """
-Module to manage price alerts and notifications
+Module for managing price alerts and notifications
 """
-import os
-import time
-from config import ALERT_THRESHOLDS, ENABLE_ALERTS, ALERT_SOUND
+import smtplib
+from email.mime.text import MimeText
+from config import ALERT_ENABLED, PRICE_CHANGE_THRESHOLD
 
 class AlertManager:
     def __init__(self):
-        self.triggered_alerts = set()
-    
-    def check_alerts(self, symbol, price):
-        """
-        Check if price triggers any alerts
-        Returns list of alert messages
-        """
-        if not ENABLE_ALERTS or symbol not in ALERT_THRESHOLDS:
-            return []
+        self.sent_alerts = set()
         
+    def check_price_alerts(self, crypto_data, previous_prices):
+        """Check if price changes trigger any alerts"""
         alerts = []
-        thresholds = ALERT_THRESHOLDS[symbol]
-        alert_key = f"{symbol}_{price}"
         
-        # Check high threshold
-        if price >= thresholds["high"] and f"{symbol}_high" not in self.triggered_alerts:
-            alert_msg = f"🚨 ALERT: {symbol} reached ${price:,.2f} (above ${thresholds['high']:,.2f})"
-            alerts.append(alert_msg)
-            self.triggered_alerts.add(f"{symbol}_high")
-        
-        # Check low threshold
-        elif price <= thresholds["low"] and f"{symbol}_low" not in self.triggered_alerts:
-            alert_msg = f"🚨 ALERT: {symbol} dropped to ${price:,.2f} (below ${thresholds['low']:,.2f})"
-            alerts.append(alert_msg)
-            self.triggered_alerts.add(f"{symbol}_low")
-        
-        # Reset alerts if price returns to normal range
-        elif thresholds["low"] < price < thresholds["high"]:
-            self.triggered_alerts.discard(f"{symbol}_high")
-            self.triggered_alerts.discard(f"{symbol}_low")
+        for crypto_id, data in crypto_data.items():
+            current_price = data.get('usd')
+            price_change = data.get('usd_24h_change', 0)
+            
+            # Check percentage change alert
+            if abs(price_change) >= PRICE_CHANGE_THRESHOLD:
+                alert_msg = f"🚨 {crypto_id.upper()} changed {price_change:.2f}% in 24h - Current: ${current_price:,.2f}"
+                alerts.append(alert_msg)
+            
+            # Check threshold alert (if previous price exists)
+            if crypto_id in previous_prices:
+                prev_price = previous_prices[crypto_id]
+                if prev_price and current_price:
+                    change_pct = ((current_price - prev_price) / prev_price) * 100
+                    if abs(change_pct) >= PRICE_CHANGE_THRESHOLD:
+                        alert_key = f"{crypto_id}_{change_pct:.1f}"
+                        if alert_key not in self.sent_alerts:
+                            alert_msg = f"📈 {crypto_id.upper()} changed {change_pct:.2f}% - ${prev_price:,.2f} → ${current_price:,.2f}"
+                            alerts.append(alert_msg)
+                            self.sent_alerts.add(alert_key)
         
         return alerts
     
-    def notify(self, message):
-        """
-        Display notification and play sound if enabled
-        """
-        print(f"\n{'='*60}")
-        print(message)
-        print(f"{'='*60}\n")
-        
-        if ALERT_SOUND:
-            # Play system alert sound
-            try:
-                # For Windows
-                if os.name == 'nt':
-                    import winsound
-                    winsound.MessageBeep()
-                # For macOS/Linux
-                else:
-                    print('\a')  # Terminal bell
-            except:
-                pass  # Silently fail if sound not available
-
-if __name__ == "__main__":
-    manager = AlertManager()
-    # Test alerts
-    test_alerts = manager.check_alerts("BTC", 51000)
-    for alert in test_alerts:
-        manager.notify(alert)
+    def send_console_alert(self, alerts):
+        """Display alerts in console"""
+        if alerts and ALERT_ENABLED:
+            print("\n" + "="*50)
+            print("📢 PRICE ALERTS:")
+            for alert in alerts:
+                print(f"• {alert}")
+            print("="*50 + "\n")
