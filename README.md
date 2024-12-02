@@ -1,82 +1,75 @@
 # Cryptocurrency Price Tracker
 
-A real-time cryptocurrency price tracker with alert functionality.
+A real-time cryptocurrency price tracker with alert functionality built in Python.
 
 ## Features
 
-- 📊 Real-time price tracking for major cryptocurrencies
-- 🔔 Custom price alerts with visual and audio notifications
-- 📈 24-hour price change indicators
-- ⚙️ Configurable settings and thresholds
-- 🎯 Easy-to-use terminal interface
+- 📊 Real-time price tracking for multiple cryptocurrencies
+- 🔔 Price change alerts with configurable thresholds
+- 💾 Historical price data storage
+- ⚙️ Easy configuration and customization
+- 🎯 Console-based alerts and notifications
 
 ## Installation
 
-1. **Clone or download the script files** to a directory
-
-2. **Install required dependencies**:
+1. **Clone or download the files** to a directory
+2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
 ## Usage
 
-1. **Configure your settings** in `config.py`:
-   - Modify `CRYPTOCURRENCIES` to track different coins
-   - Adjust `ALERT_THRESHOLDS` for your price targets
-   - Change `UPDATE_INTERVAL` for update frequency
+1. **Configure the tracker** by editing `config.py`:
+   - Add/remove cryptocurrencies in `CRYPTOCURRENCIES`
+   - Set alert thresholds and update intervals
+   - Configure price change percentage for alerts
 
 2. **Run the tracker**:
    ```bash
-   python price_tracker.py
+   python crypto_tracker.py
    ```
+
+3. **The tracker will**:
+   - Display current prices every 60 seconds (configurable)
+   - Show alerts when prices change significantly
+   - Store price history in `price_history.json`
 
 ## Configuration Options
 
-### Tracked Cryptocurrencies
+- **CRYPTOCURRENCIES**: Dictionary of cryptocurrencies to track
+- **UPDATE_INTERVAL**: Seconds between price checks (default: 60)
+- **PRICE_CHANGE_THRESHOLD**: Percentage change to trigger alerts (default: 5%)
+- **ALERT_ENABLED**: Enable/disable alert system
+
+## Adding New Cryptocurrencies
+
 Edit the `CRYPTOCURRENCIES` dictionary in `config.py`:
 ```python
 CRYPTOCURRENCIES = {
-    "bitcoin": "BTC",
-    "ethereum": "ETH",
-    # Add more: "coin-id": "SYMBOL"
+    'bitcoin': {'symbol': 'BTC', 'alert_threshold': 50000},
+    'ethereum': {'symbol': 'ETH', 'alert_threshold': 3000},
+    # Add new entries using CoinGecko API IDs
+    'your-crypto-id': {'symbol': 'SYMBOL', 'alert_threshold': PRICE},
 }
 ```
 
-### Price Alerts
-Set high/low thresholds in `ALERT_THRESHOLDS`:
-```python
-ALERT_THRESHOLDS = {
-    "BTC": {"high": 50000, "low": 40000},
-    # Add thresholds for other coins
-}
-```
-
-### Update Frequency
-Change `UPDATE_INTERVAL` in seconds (default: 60 seconds)
-
-## Files Overview
+## Files Structure
 
 - `config.py` - Configuration settings
-- `price_fetcher.py` - API data fetching
-- `alert_manager.py` - Alert handling and notifications
-- `price_tracker.py` - Main application
+- `price_fetcher.py` - API communication for price data
+- `alert_manager.py` - Alert generation and management
+- `data_storage.py` - Historical data storage
+- `crypto_tracker.py` - Main application
 - `requirements.txt` - Python dependencies
 
-## Supported Cryptocurrencies
+## Stopping the Tracker
 
-The script uses CoinGecko API, which supports thousands of cryptocurrencies. Use the CoinGecko ID for any cryptocurrency you want to track.
+Press `Ctrl+C` to gracefully stop the price tracker.
 
-## Troubleshooting
+## Notes
 
-- **No data displayed**: Check internet connection and API availability
-- **Alerts not working**: Verify alert thresholds in config.py
-- **Import errors**: Ensure all files are in the same directory
-
-## License
-
-Free for personal and educational use.
-
----
-
-**Note**: This script uses the free CoinGecko API which has rate limits. For heavy usage, consider getting an API key.
+- Uses CoinGecko Free API (no API key required)
+- Rate limits apply - respect the API terms of service
+- Historical data is stored locally in JSON format
+- Alerts are shown in console; can be extended for email/desktop notifications
