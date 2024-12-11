@@ -1,46 +1,87 @@
 """
 Module for managing price alerts and notifications
 """
-import smtplib
-from email.mime.text import MimeText
-from config import ALERT_ENABLED, PRICE_CHANGE_THRESHOLD
+import json
+import datetime
+from config import ALERT_THRESHOLDS, NOTIFICATION_METHODS, LOG_FILE
 
 class AlertManager:
     def __init__(self):
-        self.sent_alerts = set()
+        self.price_history = {}
+        self.alert_count = 0
         
-    def check_price_alerts(self, crypto_data, previous_prices):
-        """Check if price changes trigger any alerts"""
+    def check_alerts(self, current_prices, previous_prices):
+        """Check if any alerts should be triggered based on price changes"""
         alerts = []
         
-        for crypto_id, data in crypto_data.items():
-            current_price = data.get('usd')
-            price_change = data.get('usd_24h_change', 0)
+        for crypto_id, current_data in current_prices.items():
+            if crypto_id not in previous_prices:
+                continue
+                
+            prev_data = previous_prices[crypto_id]
             
-            # Check percentage change alert
-            if abs(price_change) >= PRICE_CHANGE_THRESHOLD:
-                alert_msg = f"🚨 {crypto_id.upper()} changed {price_change:.2f}% in 24h - Current: ${current_price:,.2f}"
-                alerts.append(alert_msg)
+            # Calculate percentage changes
+            current_price = current_data.get('usd', 0)
+            previous_price = prev_data.get('usd', 0)
             
-            # Check threshold alert (if previous price exists)
-            if crypto_id in previous_prices:
-                prev_price = previous_prices[crypto_id]
-                if prev_price and current_price:
-                    change_pct = ((current_price - prev_price) / prev_price) * 100
-                    if abs(change_pct) >= PRICE_CHANGE_THRESHOLD:
-                        alert_key = f"{crypto_id}_{change_pct:.1f}"
-                        if alert_key not in self.sent_alerts:
-                            alert_msg = f"📈 {crypto_id.upper()} changed {change_pct:.2f}% - ${prev_price:,.2f} → ${current_price:,.2f}"
-                            alerts.append(alert_msg)
-                            self.sent_alerts.add(alert_key)
+            if previous_price > 0:
+                price_change_pct = ((current_price - previous_price) / previous_price) * 100
+                
+                # Check for price increase alert
+                if price_change_pct >= ALERT_THRESHOLDS["price_increase"]:
+                    alerts.append({
+                        'type': 'PRICE_INCREASE',
+                        'crypto': crypto_id,
+                        'current_price': current_price,
+                        'change_pct': price_change_pct,
+                        'timestamp': datetime.datetime.now()
+                    })
+                
+                # Check for price decrease alert
+                elif price_change_pct <= -ALERT_THRESHOLDS["price_decrease"]:
+                    alerts.append({
+                        'type': 'PRICE_DECREASE', 
+                        'crypto': crypto_id,
+                        'current_price': current_price,
+                        'change_pct': price_change_pct,
+                        'timestamp': datetime.datetime.now()
+                    })
         
         return alerts
     
-    def send_console_alert(self, alerts):
-        """Display alerts in console"""
-        if alerts and ALERT_ENABLED:
-            print("\n" + "="*50)
-            print("📢 PRICE ALERTS:")
-            for alert in alerts:
-                print(f"• {alert}")
-            print("="*50 + "\n")
+    def send_notification(self, alert):
+        """Send notification based on configured methods"""
+        message = self._format_alert_message(alert)
+        
+        for method in NOTIFICATION_METHODS:
+            if method == "console":
+                self._console_notification(message)
+            elif method == "file":
+                self._file_notification(message)
+            elif method == "email":
+                self._email_notification(message)
+    
+    def _format_alert_message(self, alert):
+        """Format alert message for notification"""
+        symbol = "🟢" if alert['type'] == 'PRICE_INCREASE' else "🔴"
+        direction = "increased" if alert['type'] == 'PRICE_INCREASE' else "decreased"
+        
+        return (f"{symbol} ALERT: {alert['crypto'].upper()} {direction} by "
+                f"{alert['change_pct']:.2f}% to ${alert['current_price']:.2f} "
+                f"at {alert['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    def _console_notification(self, message):
+        """Send notification to console"""
+        print(f"\n{'='*60}")
+        print(message)
+        print(f"{'='*60}\n")
+    
+    def _file_notification(self, message):
+        """Log notification to file"""
+        with open(LOG_FILE, 'a') as f:
+            f.write(message + '\n')
+    
+    def _email_notification(self, message):
+        """Send email notification (placeholder)"""
+        # This would require email configuration
+        print(f"EMAIL NOTIFICATION: {message}")
