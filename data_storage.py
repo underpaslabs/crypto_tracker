@@ -1,59 +1,80 @@
 """
-Module for storing and managing price history
+Module for storing and managing price data
 """
 import json
+import csv
 import os
 from datetime import datetime
 
 class DataStorage:
-    def __init__(self, history_file='price_history.json'):
-        self.history_file = history_file
-        self.price_history = self.load_history()
-        
-    def load_history(self):
-        """Load price history from file"""
-        if os.path.exists(self.history_file):
-            try:
-                with open(self.history_file, 'r') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, Exception):
-                return {}
-        return {}
+    def __init__(self, storage_file="price_data.json"):
+        self.storage_file = storage_file
+        self.csv_file = "price_history.csv"
+        self._initialize_storage()
     
-    def save_price_data(self, crypto_data):
-        """Save current prices to history"""
-        timestamp = datetime.now().isoformat()
+    def _initialize_storage(self):
+        """Initialize storage files if they don't exist"""
+        if not os.path.exists(self.storage_file):
+            with open(self.storage_file, 'w') as f:
+                json.dump({}, f)
         
-        for crypto_id, data in crypto_data.items():
-            if crypto_id not in self.price_history:
-                self.price_history[crypto_id] = []
-            
-            price_entry = {
+        # Initialize CSV with headers if it doesn't exist
+        if not os.path.exists(self.csv_file):
+            with open(self.csv_file, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['timestamp', 'cryptocurrency', 'price_usd', 'volume_24h', 'change_24h'])
+    
+    def save_prices(self, prices):
+        """Save current prices to JSON storage"""
+        try:
+            timestamp = datetime.now().isoformat()
+            data = {
                 'timestamp': timestamp,
-                'price': data.get('usd'),
-                'change_24h': data.get('usd_24h_change', 0)
+                'prices': prices
             }
             
-            self.price_history[crypto_id].append(price_entry)
-            
-            # Keep only last 1000 entries per cryptocurrency
-            if len(self.price_history[crypto_id]) > 1000:
-                self.price_history[crypto_id] = self.price_history[crypto_id][-1000:]
-        
-        self._save_to_file()
-    
-    def _save_to_file(self):
-        """Save history to JSON file"""
-        try:
-            with open(self.history_file, 'w') as f:
-                json.dump(self.price_history, f, indent=2)
+            with open(self.storage_file, 'r+') as f:
+                existing_data = json.load(f)
+                existing_data[timestamp] = prices
+                f.seek(0)
+                json.dump(existing_data, f, indent=2)
+                
         except Exception as e:
-            print(f"Error saving history: {e}")
+            print(f"Error saving prices: {e}")
     
-    def get_previous_prices(self):
-        """Get the most recent previous prices for each cryptocurrency"""
-        previous_prices = {}
-        for crypto_id, history in self.price_history.items():
-            if history:
-                previous_prices[crypto_id] = history[-1]['price']
-        return previous_prices
+    def save_to_csv(self, prices):
+        """Append prices to CSV file for historical analysis"""
+        try:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            with open(self.csv_file, 'a', newline='') as f:
+                writer = csv.writer(f)
+                
+                for crypto_id, data in prices.items():
+                    writer.writerow([
+                        timestamp,
+                        crypto_id,
+                        data.get('usd', 0),
+                        data.get('usd_24h_vol', 0),
+                        data.get('usd_24h_change', 0)
+                    ])
+                    
+        except Exception as e:
+            print(f"Error saving to CSV: {e}")
+    
+    def load_previous_prices(self):
+        """Load the most recent previous prices for comparison"""
+        try:
+            with open(self.storage_file, 'r') as f:
+                data = json.load(f)
+            
+            if not data:
+                return {}
+            
+            # Get the most recent entry
+            latest_timestamp = sorted(data.keys())[-1]
+            return data[latest_timestamp]
+            
+        except Exception as e:
+            print(f"Error loading previous prices: {e}")
+            return {}
